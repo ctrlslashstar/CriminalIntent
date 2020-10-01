@@ -2,7 +2,9 @@ package com.example.criminalintent.controller.fragment;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.ContactsContract;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -22,6 +24,7 @@ import com.example.criminalintent.model.Crime;
 import com.example.criminalintent.repository.CrimeDBRepository;
 import com.example.criminalintent.repository.IRepository;
 
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.UUID;
 
@@ -31,10 +34,13 @@ public class CrimeDetailFragment extends Fragment {
     public static final String ARGS_CRIME_ID = "crimeId";
     public static final String FRAGMENT_TAG_DATE_PICKER = "DatePicker";
     public static final int REQUEST_CODE_DATE_PICKER = 0;
+    private static final int REQUEST_CODE_SELECT_CONTACT = 1;
 
     private EditText mEditTextTitle;
     private Button mButtonDate;
     private CheckBox mCheckBoxSolved;
+    private Button mButtonSuspect;
+    private Button mButtonReport;
 
     private Crime mCrime;
     private IRepository mRepository;
@@ -99,15 +105,18 @@ public class CrimeDetailFragment extends Fragment {
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        if (resultCode != Activity.RESULT_OK || data == null)
+    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent intent) {
+        if (resultCode != Activity.RESULT_OK || intent == null)
             return;
 
         if (requestCode == REQUEST_CODE_DATE_PICKER) {
             Date userSelectedDate =
-                    (Date) data.getSerializableExtra(DatePickerFragment.EXTRA_USER_SELECTED_DATE);
+                    (Date) intent.getSerializableExtra(DatePickerFragment.EXTRA_USER_SELECTED_DATE);
 
             updateCrimeDate(userSelectedDate);
+        } else if (requestCode == REQUEST_CODE_SELECT_CONTACT) {
+            //TODO: read a contact
+            Uri contactUri = intent.getData();
         }
     }
 
@@ -115,6 +124,8 @@ public class CrimeDetailFragment extends Fragment {
         mEditTextTitle = view.findViewById(R.id.crime_title);
         mButtonDate = view.findViewById(R.id.crime_date);
         mCheckBoxSolved = view.findViewById(R.id.crime_solved);
+        mButtonSuspect = view.findViewById(R.id.choose_suspect);
+        mButtonReport = view.findViewById(R.id.send_report);
     }
 
     private void initViews() {
@@ -166,6 +177,20 @@ public class CrimeDetailFragment extends Fragment {
                         FRAGMENT_TAG_DATE_PICKER);
             }
         });
+
+        mButtonSuspect.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                selectContact();
+            }
+        });
+
+        mButtonReport.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                shareReportIntent();
+            }
+        });
     }
 
     private void updateCrime() {
@@ -177,5 +202,51 @@ public class CrimeDetailFragment extends Fragment {
         updateCrime();
 
         mButtonDate.setText(mCrime.getDate().toString());
+    }
+
+    private String getReport() {
+        String title = mCrime.getTitle();
+
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy/MM/dd-HH:mm:SS");
+        String dateString = simpleDateFormat.format(mCrime.getDate());
+
+        String solvedString = mCrime.isSolved() ?
+                getString(R.string.crime_report_solved) :
+                getString(R.string.crime_report_unsolved);
+
+        String suspectString = mCrime.getSuspect() == null ?
+                getString(R.string.crime_report_no_suspect) :
+                getString(R.string.crime_report_suspect, mCrime.getSuspect());
+
+        String report = getString(
+                R.string.crime_report,
+                title,
+                dateString,
+                solvedString,
+                suspectString);
+
+        return report;
+    }
+
+    private void shareReportIntent() {
+        Intent sendIntent = new Intent(Intent.ACTION_SEND);
+        sendIntent.putExtra(Intent.EXTRA_TEXT, getReport());
+        sendIntent.putExtra(Intent.EXTRA_SUBJECT, getString(R.string.crime_report_subject));
+        sendIntent.setType("text/plain");
+
+        Intent shareIntent =
+                Intent.createChooser(sendIntent, getString(R.string.send_report));
+
+        //we prevent app from crash if the intent has no destination.
+        if (sendIntent.resolveActivity(getActivity().getPackageManager()) != null)
+            startActivity(shareIntent);
+    }
+
+    private void selectContact() {
+        Intent intent = new Intent(Intent.ACTION_PICK);
+        intent.setType(ContactsContract.Contacts.CONTENT_TYPE);
+        if (intent.resolveActivity(getActivity().getPackageManager()) != null) {
+            startActivityForResult(intent, REQUEST_CODE_SELECT_CONTACT);
+        }
     }
 }

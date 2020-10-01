@@ -11,6 +11,7 @@ public class Crime {
     private String mTitle;
     private Date mDate;
     private boolean mSolved;
+    private String mSuspect;
 
     public UUID getId() {
         return mId;
@@ -40,6 +41,14 @@ public class Crime {
         mSolved = solved;
     }
 
+    public String getSuspect() {
+        return mSuspect;
+    }
+
+    public void setSuspect(String suspect) {
+        mSuspect = suspect;
+    }
+
     public Crime() {
         this(UUID.randomUUID());
 //        mDate = DateUtils.randomDate();
@@ -50,33 +59,11 @@ public class Crime {
         mDate = new Date();
     }
 
-    public Crime(UUID id, String title, Date date, boolean solved) {
+    public Crime(UUID id, String title, Date date, boolean solved, String suspect) {
         mId = id;
         mTitle = title;
         mDate = date;
         mSolved = solved;
+        mSuspect = suspect;
     }
-
-    /*public static class Builder {
-
-        private Crime mCrime;
-
-        public Builder() {
-            mCrime = new Crime();
-        }
-
-        public Builder setTitle(String title) {
-            mCrime.setTitle(title);
-            return this;
-        }
-
-        public Builder setDate(Date date) {
-            mCrime.setDate(date);
-            return this;
-        }
-
-        public Crime create() {
-            return mCrime;
-        }
-    }*/
 }
