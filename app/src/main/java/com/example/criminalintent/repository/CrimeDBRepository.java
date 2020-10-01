@@ -42,29 +42,20 @@ public class CrimeDBRepository implements IRepository {
     public List<Crime> getCrimes() {
         List<Crime> crimes = new ArrayList<>();
 
-        Cursor cursor = mDatabase.query(
-                CrimeDBSchema.CrimeTable.NAME,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null);
+        CrimeCursorWrapper crimeCursorWrapper = queryCrimeCursor(null, null);
 
-        if (cursor == null || cursor.getCount() == 0)
+        if (crimeCursorWrapper == null || crimeCursorWrapper.getCount() == 0)
             return crimes;
 
         try {
-            cursor.moveToFirst();
+            crimeCursorWrapper.moveToFirst();
 
-            while (!cursor.isAfterLast()) {
-                Crime crime = extractCrimeFromCursor(cursor);
-                crimes.add(crime);
-
-                cursor.moveToNext();
+            while (!crimeCursorWrapper.isAfterLast()) {
+                crimes.add(crimeCursorWrapper.getCrime());
+                crimeCursorWrapper.moveToNext();
             }
         } finally {
-            cursor.close();
+            crimeCursorWrapper.close();
         }
 
         return crimes;
@@ -75,6 +66,20 @@ public class CrimeDBRepository implements IRepository {
         String where = Cols.UUID + " = ?";
         String[] whereArgs = new String[]{crimeId.toString()};
 
+        CrimeCursorWrapper crimeCursorWrapper = queryCrimeCursor(where, whereArgs);
+
+        if (crimeCursorWrapper == null || crimeCursorWrapper.getCount() == 0)
+            return null;
+
+        try {
+            crimeCursorWrapper.moveToFirst();
+            return crimeCursorWrapper.getCrime();
+        } finally {
+            crimeCursorWrapper.close();
+        }
+    }
+
+    private CrimeCursorWrapper queryCrimeCursor(String where, String[] whereArgs) {
         Cursor cursor = mDatabase.query(
                 CrimeDBSchema.CrimeTable.NAME,
                 null,
@@ -84,17 +89,8 @@ public class CrimeDBRepository implements IRepository {
                 null,
                 null);
 
-        if (cursor == null || cursor.getCount() == 0)
-            return null;
-
-        try {
-            cursor.moveToFirst();
-            Crime crime = extractCrimeFromCursor(cursor);
-
-            return crime;
-        } finally {
-            cursor.close();
-        }
+        CrimeCursorWrapper crimeCursorWrapper = new CrimeCursorWrapper(cursor);
+        return crimeCursorWrapper;
     }
 
     @Override
@@ -135,14 +131,5 @@ public class CrimeDBRepository implements IRepository {
         values.put(Cols.DATE, crime.getDate().getTime());
         values.put(Cols.SOLVED, crime.isSolved() ? 1 : 0);
         return values;
-    }
-
-    private Crime extractCrimeFromCursor(Cursor cursor) {
-        UUID uuid = UUID.fromString(cursor.getString(cursor.getColumnIndex(Cols.UUID)));
-        String title = cursor.getString(cursor.getColumnIndex(Cols.TITLE));
-        Date date = new Date(cursor.getLong(cursor.getColumnIndex(Cols.DATE)));
-        boolean solved = cursor.getInt(cursor.getColumnIndex(Cols.SOLVED)) == 0 ? false : true;
-
-        return new Crime(uuid, title, date, solved);
     }
 }
