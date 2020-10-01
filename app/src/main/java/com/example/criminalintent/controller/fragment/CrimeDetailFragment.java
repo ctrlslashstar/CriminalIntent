@@ -2,6 +2,7 @@ package com.example.criminalintent.controller.fragment;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
@@ -115,8 +116,28 @@ public class CrimeDetailFragment extends Fragment {
 
             updateCrimeDate(userSelectedDate);
         } else if (requestCode == REQUEST_CODE_SELECT_CONTACT) {
-            //TODO: read a contact
             Uri contactUri = intent.getData();
+
+            String[] projection = new String[]{ContactsContract.Contacts.DISPLAY_NAME};
+            Cursor cursor = getActivity().getContentResolver().query(
+                    contactUri,
+                    projection,
+                    null,
+                    null,
+                    null);
+
+            if (cursor == null || cursor.getCount() == 0)
+                return;
+
+            try {
+                cursor.moveToFirst();
+
+                String suspect = cursor.getString(0);
+                mCrime.setSuspect(suspect);
+                mButtonSuspect.setText(suspect);
+            } finally {
+                cursor.close();
+            }
         }
     }
 
@@ -132,6 +153,9 @@ public class CrimeDetailFragment extends Fragment {
         mEditTextTitle.setText(mCrime.getTitle());
         mCheckBoxSolved.setChecked(mCrime.isSolved());
         mButtonDate.setText(mCrime.getDate().toString());
+
+        if (mCrime.getSuspect() != null)
+            mButtonSuspect.setText(mCrime.getSuspect());
     }
 
     private void setListeners() {
