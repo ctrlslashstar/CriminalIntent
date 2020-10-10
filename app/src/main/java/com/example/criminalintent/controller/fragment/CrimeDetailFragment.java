@@ -1,11 +1,18 @@
 package com.example.criminalintent.controller.fragment;
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.ContactsContract;
+import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -16,17 +23,24 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 
 import androidx.annotation.Nullable;
+import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 
 import com.example.criminalintent.R;
 import com.example.criminalintent.model.Crime;
 import com.example.criminalintent.repository.CrimeDBRepository;
 import com.example.criminalintent.repository.IRepository;
+import com.example.criminalintent.utils.PictureUtils;
 
+import java.io.File;
+import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 public class CrimeDetailFragment extends Fragment {
@@ -34,16 +48,22 @@ public class CrimeDetailFragment extends Fragment {
     public static final String TAG = "CDF";
     public static final String ARGS_CRIME_ID = "crimeId";
     public static final String FRAGMENT_TAG_DATE_PICKER = "DatePicker";
+    public static final String AUTHORITY = "com.example.criminalintent.fileProvider";
+
     public static final int REQUEST_CODE_DATE_PICKER = 0;
     private static final int REQUEST_CODE_SELECT_CONTACT = 1;
+    private static final int REQUEST_CODE_IMAGE_CAPTURE = 2;
 
     private EditText mEditTextTitle;
     private Button mButtonDate;
     private CheckBox mCheckBoxSolved;
     private Button mButtonSuspect;
     private Button mButtonReport;
+    private ImageView mImageViewPhoto;
+    private ImageButton mImageButtonTakePicture;
 
     private Crime mCrime;
+    private File mPhotoFile;
     private IRepository mRepository;
 
     public static CrimeDetailFragment newInstance(UUID crimeId) {
@@ -71,6 +91,8 @@ public class CrimeDetailFragment extends Fragment {
         //this is storage of this fragment
         UUID crimeId = (UUID) getArguments().getSerializable(ARGS_CRIME_ID);
         mCrime = mRepository.getCrime(crimeId);
+
+        mPhotoFile = mRepository.getPhotoFile(mCrime);
     }
 
     /**
@@ -92,6 +114,7 @@ public class CrimeDetailFragment extends Fragment {
 
         findViews(view);
         initViews();
+        updatePhotoView();
         setListeners();
 
         return view;
@@ -138,6 +161,11 @@ public class CrimeDetailFragment extends Fragment {
             } finally {
                 cursor.close();
             }
+        } else if (requestCode == REQUEST_CODE_IMAGE_CAPTURE) {
+            Uri photoUri = generateUriForPhotoFile();
+            getActivity().revokeUriPermission(photoUri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+
+            updatePhotoView();
         }
     }
 
@@ -147,6 +175,8 @@ public class CrimeDetailFragment extends Fragment {
         mCheckBoxSolved = view.findViewById(R.id.crime_solved);
         mButtonSuspect = view.findViewById(R.id.choose_suspect);
         mButtonReport = view.findViewById(R.id.send_report);
+        mImageViewPhoto = view.findViewById(R.id.imgview_photo);
+        mImageButtonTakePicture = view.findViewById(R.id.imgbtn_take_picture);
     }
 
     private void initViews() {
@@ -215,6 +245,51 @@ public class CrimeDetailFragment extends Fragment {
                 shareReportIntent();
             }
         });
+
+        mImageButtonTakePicture.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                takePictureIntent();
+            }
+        });
+    }
+
+    private void takePictureIntent() {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        try {
+            if (mPhotoFile != null && takePictureIntent
+                    .resolveActivity(getActivity().getPackageManager()) != null) {
+
+                /*File filesDir = getContext().getFilesDir();
+                Uri photoUri = Uri.fromFile(filesDir);*/
+
+                // file:///data/data/com.example.ci/files/234234234234.jpg
+                Uri photoUri = generateUriForPhotoFile();
+
+                List<ResolveInfo> activities = getActivity().getPackageManager()
+                        .queryIntentActivities(
+                                takePictureIntent,
+                                PackageManager.MATCH_DEFAULT_ONLY);
+                for (ResolveInfo activity: activities) {
+                    getActivity().grantUriPermission(
+                            activity.activityInfo.packageName,
+                            photoUri,
+                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                }
+
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
+                startActivityForResult(takePictureIntent, REQUEST_CODE_IMAGE_CAPTURE);
+            }
+        } catch (ActivityNotFoundException e) {
+            Log.e(TAG, e.getMessage(), e);
+        }
+    }
+
+    private Uri generateUriForPhotoFile() {
+        return FileProvider.getUriForFile(
+                getContext(),
+                AUTHORITY,
+                mPhotoFile);
     }
 
     private void updateCrime() {
@@ -272,5 +347,16 @@ public class CrimeDetailFragment extends Fragment {
         if (intent.resolveActivity(getActivity().getPackageManager()) != null) {
             startActivityForResult(intent, REQUEST_CODE_SELECT_CONTACT);
         }
+    }
+
+    private void updatePhotoView() {
+        if (mPhotoFile == null || !mPhotoFile.exists())
+            return;
+
+//        Bitmap bitmap = BitmapFactory.decodeFile(mPhotoFile.getAbsolutePath());
+
+        //this has a better memory management.
+        Bitmap bitmap = PictureUtils.getScaledBitmap(mPhotoFile.getAbsolutePath(), getActivity());
+        mImageViewPhoto.setImageBitmap(bitmap);
     }
 }

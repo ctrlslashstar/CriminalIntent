@@ -2,6 +2,7 @@ package com.example.criminalintent.repository;
 
 import com.example.criminalintent.model.Crime;
 
+import java.io.File;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,4 +13,5 @@ public interface IRepository {
     void updateCrime(Crime crime);
     void deleteCrime(Crime crime);
     int getPosition(UUID crimeId);
+    File getPhotoFile(Crime crime);
 }

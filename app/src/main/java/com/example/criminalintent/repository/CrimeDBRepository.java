@@ -11,6 +11,7 @@ import com.example.criminalintent.model.Crime;
 
 import static com.example.criminalintent.database.CrimeDBSchema.CrimeTable.Cols;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -122,6 +123,15 @@ public class CrimeDBRepository implements IRepository {
                 return i;
         }
         return -1;
+    }
+
+    public File getPhotoFile(Crime crime) {
+        // /data/data/com.example.criminalintent/files/
+        File filesDir = mContext.getFilesDir();
+
+        // /data/data/com.example.criminalintent/files/IMG_ktui4u544nmkfuy48485.jpg
+        File photoFile = new File(filesDir, crime.getPhotoFileName());
+        return photoFile;
     }
 
     private ContentValues getContentValues(Crime crime) {

@@ -2,6 +2,7 @@ package com.example.criminalintent.repository;
 
 import com.example.criminalintent.model.Crime;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -82,5 +83,10 @@ public class CrimeRepository implements IRepository {
         }
 
         return 0;
+    }
+
+    @Override
+    public File getPhotoFile(Crime crime) {
+        return null;
     }
 }
