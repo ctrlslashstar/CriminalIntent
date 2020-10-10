@@ -5,9 +5,13 @@ import android.content.Intent;
 
 import androidx.fragment.app.Fragment;
 
+import com.example.criminalintent.R;
+import com.example.criminalintent.controller.fragment.CrimeDetailFragment;
 import com.example.criminalintent.controller.fragment.CrimeListFragment;
+import com.example.criminalintent.model.Crime;
 
-public class CrimeListActivity extends SingleFragmentActivity {
+public class CrimeListActivity extends SingleFragmentActivity implements
+        CrimeListFragment.Callbacks, CrimeDetailFragment.Callbacks {
 
     public static Intent newIntent(Context context) {
         Intent intent = new Intent(context, CrimeListActivity.class);
@@ -19,32 +23,29 @@ public class CrimeListActivity extends SingleFragmentActivity {
         return CrimeListFragment.newInstance();
     }
 
-    /*@Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.menu_cime_list, menu);
 
-        return true;
+    @Override
+    public void onCrimeSelected(Crime crime) {
+        if (findViewById(R.id.detail_fragment_container) == null) {
+            Intent intent = CrimePagerActivity.newIntent(this, crime.getId());
+            startActivity(intent);
+        } else {
+            //add fragment to container
+            CrimeDetailFragment crimeDetailFragment =
+                    CrimeDetailFragment.newInstance(crime.getId());
+
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.detail_fragment_container, crimeDetailFragment)
+                    .commit();
+        }
     }
 
     @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        Log.d("CLA", "item: " + item.getItemId());
+    public void onCrimeUpdated(Crime crime) {
+        CrimeListFragment crimeListFragment = (CrimeListFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.fragment_container);
 
-        switch (item.getItemId()) {
-            case R.id.menu_item_add_crime:
-                Crime crime = new Crime();
-                CrimeRepository.getInstance().insertCrime(crime);
-
-                Intent intent = CrimePagerActivity.newIntent(this, crime.getId());
-                startActivity(intent);
-
-                return true;
-            case R.id.menu_item_clear:
-                //remove all items in repository
-                return true;
-            default:
-                return super.onOptionsItemSelected(item);
-        }
-    }*/
+        crimeListFragment.updateUI();
+    }
 }

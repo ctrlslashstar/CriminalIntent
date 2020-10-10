@@ -1,5 +1,6 @@
 package com.example.criminalintent.controller.fragment;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
@@ -20,6 +21,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.criminalintent.R;
 import com.example.criminalintent.controller.activity.CrimePagerActivity;
+import com.example.criminalintent.controller.activity.SingleFragmentActivity;
 import com.example.criminalintent.model.Crime;
 import com.example.criminalintent.repository.CrimeDBRepository;
 import com.example.criminalintent.repository.IRepository;
@@ -37,6 +39,8 @@ public class CrimeListFragment extends Fragment {
     private IRepository mRepository;
     private boolean mIsSubtitleVisible = false;
 
+    private Callbacks mCallbacks;
+
     public static CrimeListFragment newInstance() {
 
         Bundle args = new Bundle();
@@ -48,6 +52,18 @@ public class CrimeListFragment extends Fragment {
 
     public CrimeListFragment() {
         // Required empty public constructor
+    }
+
+    @Override
+    public void onAttach(@NonNull Context context) {
+        super.onAttach(context);
+
+        if (context instanceof Callbacks)
+            mCallbacks = (Callbacks) context;
+        else {
+            throw new ClassCastException(context.toString()
+                    + " must implement Callbacks");
+        }
     }
 
     @Override
@@ -89,8 +105,8 @@ public class CrimeListFragment extends Fragment {
                 Crime crime = new Crime();
                 mRepository.insertCrime(crime);
 
-                Intent intent = CrimePagerActivity.newIntent(getActivity(), crime.getId());
-                startActivity(intent);
+                mCallbacks.onCrimeSelected(crime);
+                updateUI();
 
                 return true;
             case R.id.menu_item_subtitle:
@@ -131,7 +147,7 @@ public class CrimeListFragment extends Fragment {
         updateUI();
     }
 
-    private void updateUI() {
+    public void updateUI() {
         List<Crime> crimes = mRepository.getCrimes();
 
         if (mCrimeAdapter == null) {
@@ -175,8 +191,7 @@ public class CrimeListFragment extends Fragment {
             itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    Intent intent = CrimePagerActivity.newIntent(getActivity(), mCrime.getId());
-                    startActivity(intent);
+                    mCallbacks.onCrimeSelected(mCrime);
                 }
             });
         }
@@ -228,5 +243,9 @@ public class CrimeListFragment extends Fragment {
             Crime crime = mCrimes.get(position);
             holder.bindCrime(crime);
         }
+    }
+
+    public interface Callbacks {
+        void onCrimeSelected(Crime crime);
     }
 }

@@ -2,15 +2,14 @@ package com.example.criminalintent.controller.fragment;
 
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.database.Cursor;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.provider.ContactsContract;
 import android.provider.MediaStore;
 import android.text.Editable;
@@ -26,18 +25,19 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 
 import com.example.criminalintent.R;
+import com.example.criminalintent.controller.activity.CrimeListActivity;
 import com.example.criminalintent.model.Crime;
 import com.example.criminalintent.repository.CrimeDBRepository;
 import com.example.criminalintent.repository.IRepository;
 import com.example.criminalintent.utils.PictureUtils;
 
 import java.io.File;
-import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -66,6 +66,8 @@ public class CrimeDetailFragment extends Fragment {
     private File mPhotoFile;
     private IRepository mRepository;
 
+    private Callbacks mCallbacks;
+
     public static CrimeDetailFragment newInstance(UUID crimeId) {
 
         Bundle args = new Bundle();
@@ -78,6 +80,18 @@ public class CrimeDetailFragment extends Fragment {
 
     public CrimeDetailFragment() {
         // Required empty public constructor
+    }
+
+    @Override
+    public void onAttach(@NonNull Context context) {
+        super.onAttach(context);
+
+        if (context instanceof Callbacks)
+            mCallbacks = (Callbacks) context;
+        else {
+            throw new ClassCastException(context.toString()
+                    + " must implement Callbacks");
+        }
     }
 
     @Override
@@ -139,28 +153,7 @@ public class CrimeDetailFragment extends Fragment {
 
             updateCrimeDate(userSelectedDate);
         } else if (requestCode == REQUEST_CODE_SELECT_CONTACT) {
-            Uri contactUri = intent.getData();
-
-            String[] projection = new String[]{ContactsContract.Contacts.DISPLAY_NAME};
-            Cursor cursor = getActivity().getContentResolver().query(
-                    contactUri,
-                    projection,
-                    null,
-                    null,
-                    null);
-
-            if (cursor == null || cursor.getCount() == 0)
-                return;
-
-            try {
-                cursor.moveToFirst();
-
-                String suspect = cursor.getString(0);
-                mCrime.setSuspect(suspect);
-                mButtonSuspect.setText(suspect);
-            } finally {
-                cursor.close();
-            }
+            handleSelectedContact(intent);
         } else if (requestCode == REQUEST_CODE_IMAGE_CAPTURE) {
             Uri photoUri = generateUriForPhotoFile();
             getActivity().revokeUriPermission(photoUri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
@@ -200,6 +193,7 @@ public class CrimeDetailFragment extends Fragment {
                 Log.d(TAG, "onTextChanged: " + s + ", " + start + ", " + before + ", " + count);
 
                 mCrime.setTitle(s.toString());
+                updateCrime();
             }
 
             @Override
@@ -212,6 +206,7 @@ public class CrimeDetailFragment extends Fragment {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 mCrime.setSolved(isChecked);
+                updateCrime();
             }
         });
 
@@ -254,46 +249,17 @@ public class CrimeDetailFragment extends Fragment {
         });
     }
 
-    private void takePictureIntent() {
-        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        try {
-            if (mPhotoFile != null && takePictureIntent
-                    .resolveActivity(getActivity().getPackageManager()) != null) {
-
-                /*File filesDir = getContext().getFilesDir();
-                Uri photoUri = Uri.fromFile(filesDir);*/
-
-                // file:///data/data/com.example.ci/files/234234234234.jpg
-                Uri photoUri = generateUriForPhotoFile();
-
-                List<ResolveInfo> activities = getActivity().getPackageManager()
-                        .queryIntentActivities(
-                                takePictureIntent,
-                                PackageManager.MATCH_DEFAULT_ONLY);
-                for (ResolveInfo activity: activities) {
-                    getActivity().grantUriPermission(
-                            activity.activityInfo.packageName,
-                            photoUri,
-                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-                }
-
-                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
-                startActivityForResult(takePictureIntent, REQUEST_CODE_IMAGE_CAPTURE);
-            }
-        } catch (ActivityNotFoundException e) {
-            Log.e(TAG, e.getMessage(), e);
-        }
-    }
-
-    private Uri generateUriForPhotoFile() {
-        return FileProvider.getUriForFile(
-                getContext(),
-                AUTHORITY,
-                mPhotoFile);
-    }
-
     private void updateCrime() {
         mRepository.updateCrime(mCrime);
+
+        //todo: anti pattern
+        mCallbacks.onCrimeUpdated(mCrime);
+
+        /*CrimeListFragment crimeListFragment = (CrimeListFragment) getActivity()
+                .getSupportFragmentManager()
+                .findFragmentById(R.id.fragment_container);
+
+        crimeListFragment.updateUI();*/
     }
 
     private void updateCrimeDate(Date userSelectedDate) {
@@ -327,6 +293,71 @@ public class CrimeDetailFragment extends Fragment {
         return report;
     }
 
+    private void handleSelectedContact(Intent intent) {
+        Uri contactUri = intent.getData();
+
+        String[] projection = new String[]{ContactsContract.Contacts.DISPLAY_NAME};
+        Cursor cursor = getActivity().getContentResolver().query(
+                contactUri,
+                projection,
+                null,
+                null,
+                null);
+
+        if (cursor == null || cursor.getCount() == 0)
+            return;
+
+        try {
+            cursor.moveToFirst();
+
+            String suspect = cursor.getString(0);
+            mCrime.setSuspect(suspect);
+            mButtonSuspect.setText(suspect);
+        } finally {
+            cursor.close();
+        }
+    }
+
+    private void takePictureIntent() {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        try {
+            if (mPhotoFile != null && takePictureIntent
+                    .resolveActivity(getActivity().getPackageManager()) != null) {
+
+                // file:///data/data/com.example.ci/files/234234234234.jpg
+                Uri photoUri = generateUriForPhotoFile();
+
+                grantWriteUriToAllResolvedActivities(takePictureIntent, photoUri);
+
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
+                startActivityForResult(takePictureIntent, REQUEST_CODE_IMAGE_CAPTURE);
+            }
+        } catch (ActivityNotFoundException e) {
+            Log.e(TAG, e.getMessage(), e);
+        }
+    }
+
+    private void grantWriteUriToAllResolvedActivities(Intent takePictureIntent, Uri photoUri) {
+        List<ResolveInfo> activities = getActivity().getPackageManager()
+                .queryIntentActivities(
+                        takePictureIntent,
+                        PackageManager.MATCH_DEFAULT_ONLY);
+
+        for (ResolveInfo activity: activities) {
+            getActivity().grantUriPermission(
+                    activity.activityInfo.packageName,
+                    photoUri,
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        }
+    }
+
+    private Uri generateUriForPhotoFile() {
+        return FileProvider.getUriForFile(
+                getContext(),
+                AUTHORITY,
+                mPhotoFile);
+    }
+
     private void shareReportIntent() {
         Intent sendIntent = new Intent(Intent.ACTION_SEND);
         sendIntent.putExtra(Intent.EXTRA_TEXT, getReport());
@@ -353,10 +384,12 @@ public class CrimeDetailFragment extends Fragment {
         if (mPhotoFile == null || !mPhotoFile.exists())
             return;
 
-//        Bitmap bitmap = BitmapFactory.decodeFile(mPhotoFile.getAbsolutePath());
-
         //this has a better memory management.
         Bitmap bitmap = PictureUtils.getScaledBitmap(mPhotoFile.getAbsolutePath(), getActivity());
         mImageViewPhoto.setImageBitmap(bitmap);
+    }
+
+    public interface Callbacks {
+        void onCrimeUpdated(Crime crime);
     }
 }

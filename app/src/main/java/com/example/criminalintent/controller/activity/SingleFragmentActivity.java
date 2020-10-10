@@ -17,7 +17,7 @@ public abstract class SingleFragmentActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         //inflate layout for activity
-        setContentView(R.layout.activity_fragment);
+        setContentView(R.layout.activity_master_detail);
 
         FragmentManager fragmentManager = getSupportFragmentManager();
 
