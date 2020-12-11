@@ -4,13 +4,19 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <data>
+
     </data>
 
-    <androidx.viewpager2.widget.ViewPager2
-        android:id="@+id/crime_view_pager"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:context=".view.activity.CrimePagerActivity">
+        android:orientation="vertical"
+        tools:context=".view.activity.SingleFragmentActivity">
 
-    </androidx.viewpager2.widget.ViewPager2>
+        <FrameLayout
+            android:id="@+id/fragment_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"></FrameLayout>
+
+    </LinearLayout>
 </layout>

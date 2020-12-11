@@ -5,7 +5,7 @@
     <uses-feature android:name="android.hardware.camera"
         android:required="true" />
 
-    <uses-permission android:name="android.permission.CAMERA"></uses-permission>
+    <uses-permission android:name="android.permission.CAMERA"/>
 
     <application
         android:allowBackup="true"
@@ -14,10 +14,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity
-            android:name=".controller.activity.CrimePagerActivity"
-            android:parentActivityName=".controller.activity.CrimeListActivity" />
-        <activity android:name=".controller.activity.CrimeListActivity">
+        <activity android:name=".view.activity.CrimePagerActivity"></activity>
+        <activity android:name=".view.activity.CrimeListActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -26,12 +24,12 @@
         </activity>
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.example.criminalintent.fileProvider"
+            android:authorities="com.example.criminalintent.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/files_path"/>
+                android:resource="@xml/file_paths"></meta-data>
         </provider>
     </application>
 
